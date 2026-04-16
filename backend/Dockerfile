@@ -13,25 +13,58 @@ FROM python:3.12-slim-bookworm AS builder
 ARG NODE_MAJOR=22
 ARG APT_MIRROR
 ARG UV_INDEX_URL
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+
+ENV http_proxy=${http_proxy} \
+    https_proxy=${https_proxy} \
+    no_proxy=${no_proxy} \
+    HTTP_PROXY=${HTTP_PROXY} \
+    HTTPS_PROXY=${HTTPS_PROXY} \
+    NO_PROXY=${NO_PROXY}
 
 # Optionally override apt mirror for restricted networks (e.g. APT_MIRROR=mirrors.aliyun.com)
 RUN if [ -n "${APT_MIRROR}" ]; then \
       sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+      sed -i "s|security.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
       sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list 2>/dev/null || true; \
+      sed -i "s|security.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list 2>/dev/null || true; \
     fi
 
+# Prefer HTTPS apt sources to avoid proxy responses corrupting signature files.
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true \
+    && sed -i 's|http://security.debian.org|https://security.debian.org|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true \
+    && sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list 2>/dev/null || true \
+    && sed -i 's|http://security.debian.org|https://security.debian.org|g' /etc/apt/sources.list 2>/dev/null || true
+
 # Install build tools + Node.js (build-essential needed for native Python extensions)
-RUN apt-get update && apt-get install -y \
-    curl \
-    build-essential \
-    gnupg \
-    ca-certificates \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
+# Network in some regions/proxy setups can intermittently fail against deb.debian.org.
+RUN set -eux; \
+    apt_update() { \
+      apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::ForceIPv4=true update; \
+    }; \
+    if ! apt_update; then \
+      sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+      sed -i 's|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || true; \
+      sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null || true; \
+      sed -i 's|security.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null || true; \
+      apt_update; \
+    fi; \
+    apt-get install -y --no-install-recommends \
+      curl \
+      build-essential \
+      gnupg \
+      ca-certificates; \
+    mkdir -p /etc/apt/keyrings; \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg; \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list; \
+    apt_update; \
+    apt-get install -y --no-install-recommends nodejs; \
+    rm -rf /var/lib/apt/lists/*
 
 # Install uv (source image overridable via UV_IMAGE build arg)
 COPY --from=uv-source /uv /uvx /usr/local/bin/
