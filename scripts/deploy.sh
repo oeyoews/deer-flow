@@ -57,7 +57,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 DOCKER_DIR="$REPO_ROOT/docker"
-COMPOSE_CMD=(docker compose -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
+if command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker-compose -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
+else
+    COMPOSE_CMD=(docker compose -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
+fi
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 
