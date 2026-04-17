@@ -28,7 +28,7 @@ type MessageGroup =
 
 export function groupMessages<T>(
   messages: Message[],
-  mapper: (group: MessageGroup) => T,
+  mapper: (group: MessageGroup, index: number, groups: MessageGroup[]) => T,
 ): T[] {
   if (messages.length === 0) {
     return [];
@@ -125,7 +125,7 @@ export function groupMessages<T>(
   }
 
   return groups
-    .map(mapper)
+    .map((group, index) => mapper(group, index, groups))
     .filter((result) => result !== undefined && result !== null) as T[];
 }
 
@@ -145,7 +145,9 @@ export function extractTextFromMessage(message: Message) {
   return "";
 }
 
-const THINK_TAG_RE = /<think>\s*([\s\S]*?)\s*<\/think>/g;
+// Support both well-formed <think>...</think> blocks and truncated output where
+// the closing tag is missing (treat remainder as reasoning).
+const THINK_TAG_RE = /<think>\s*([\s\S]*?)(?:\s*<\/think>|$)/gi;
 
 function splitInlineReasoning(content: string) {
   const reasoningParts: string[] = [];

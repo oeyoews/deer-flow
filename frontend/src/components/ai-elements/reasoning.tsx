@@ -36,6 +36,7 @@ export type ReasoningProps = ComponentProps<typeof Collapsible> & {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   duration?: number;
+  autoClose?: boolean;
 };
 
 const AUTO_CLOSE_DELAY = 1000;
@@ -47,6 +48,7 @@ export const Reasoning = memo(
     isStreaming = false,
     open,
     defaultOpen = true,
+    autoClose = true,
     onOpenChange,
     duration: durationProp,
     children,
@@ -63,6 +65,7 @@ export const Reasoning = memo(
     });
 
     const [hasAutoClosed, setHasAutoClosed] = useState(false);
+    const [hasManualExpand, setHasManualExpand] = useState(false);
     const [startTime, setStartTime] = useState<number | null>(null);
 
     // Track duration when streaming starts and ends
@@ -77,9 +80,25 @@ export const Reasoning = memo(
       }
     }, [isStreaming, startTime, setDuration]);
 
-    // Auto-open when streaming starts, auto-close when streaming ends (once only)
+    // Reset auto-close lifecycle for each new streaming phase.
     useEffect(() => {
-      if (defaultOpen && !isStreaming && isOpen && !hasAutoClosed) {
+      if (isStreaming) {
+        setHasAutoClosed(false);
+        setHasManualExpand(false);
+        setIsOpen(true);
+      }
+    }, [isStreaming, setIsOpen]);
+
+    // Auto-close when streaming ends (optional; once only)
+    useEffect(() => {
+      if (
+        autoClose &&
+        defaultOpen &&
+        !isStreaming &&
+        isOpen &&
+        !hasAutoClosed &&
+        !hasManualExpand
+      ) {
         // Add a small delay before closing to allow user to see the content
         const timer = setTimeout(() => {
           setIsOpen(false);
@@ -88,9 +107,20 @@ export const Reasoning = memo(
 
         return () => clearTimeout(timer);
       }
-    }, [isStreaming, isOpen, defaultOpen, setIsOpen, hasAutoClosed]);
+    }, [
+      autoClose,
+      isStreaming,
+      isOpen,
+      defaultOpen,
+      setIsOpen,
+      hasAutoClosed,
+      hasManualExpand,
+    ]);
 
     const handleOpenChange = (newOpen: boolean) => {
+      if (newOpen) {
+        setHasManualExpand(true);
+      }
       setIsOpen(newOpen);
     };
 

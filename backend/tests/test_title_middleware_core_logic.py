@@ -197,6 +197,13 @@ class TestTitleMiddlewareCoreLogic:
         result = middleware._parse_title(raw)
         assert result == ""
 
+    def test_parse_title_strips_unclosed_think_tag(self):
+        """If model output has an unclosed <think> tag, everything after it is removed."""
+        middleware = TitleMiddleware()
+        raw = "贵阳近5年发展报告研究<think>用户想要研究贵阳发展情况。我需要使用 deep-research skill。"
+        result = middleware._parse_title(raw)
+        assert result == "贵阳近5年发展报告研究"
+
     def test_build_title_prompt_strips_assistant_think_tags(self):
         """<think> blocks in assistant messages are stripped before being included in the title prompt."""
         _set_test_title_config(enabled=True)

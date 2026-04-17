@@ -59,14 +59,16 @@ export function MessageList({
       className={cn("flex size-full flex-col justify-center", className)}
     >
       <ConversationContent className="mx-auto w-full max-w-(--container-width-md) gap-8 pt-12">
-        {groupMessages(messages, (group) => {
+        {groupMessages(messages, (group, groupIndex, groups) => {
+          const isGroupLoading =
+            thread.isLoading && groupIndex === groups.length - 1;
           if (group.type === "human" || group.type === "assistant") {
             return group.messages.map((msg) => {
               return (
                 <MessageListItem
                   key={`${group.id}/${msg.id}`}
                   message={msg}
-                  isLoading={thread.isLoading}
+                  isLoading={isGroupLoading}
                   threadId={threadId}
                   tokenUsageEnabled={tokenUsageEnabled}
                 />
@@ -79,12 +81,12 @@ export function MessageList({
                 <div key={group.id} className="w-full">
                   <MarkdownContent
                     content={extractContentFromMessage(message)}
-                    isLoading={thread.isLoading}
+                    isLoading={isGroupLoading}
                     rehypePlugins={rehypePlugins}
                   />
                   <MessageTokenUsageList
                     enabled={tokenUsageEnabled}
-                    isLoading={thread.isLoading}
+                    isLoading={isGroupLoading}
                     messages={group.messages}
                   />
                 </div>
@@ -104,7 +106,7 @@ export function MessageList({
                 {group.messages[0] && hasContent(group.messages[0]) && (
                   <MarkdownContent
                     content={extractContentFromMessage(group.messages[0])}
-                    isLoading={thread.isLoading}
+                    isLoading={isGroupLoading}
                     rehypePlugins={rehypePlugins}
                     className="mb-4"
                   />
@@ -112,7 +114,7 @@ export function MessageList({
                 <ArtifactFileList files={files} threadId={threadId} />
                 <MessageTokenUsageList
                   enabled={tokenUsageEnabled}
-                  isLoading={thread.isLoading}
+                  isLoading={isGroupLoading}
                   messages={group.messages}
                 />
               </div>
@@ -176,7 +178,7 @@ export function MessageList({
                   <MessageGroup
                     key={"thinking-group-" + message.id}
                     messages={[message]}
-                    isLoading={thread.isLoading}
+                    isLoading={isGroupLoading}
                   />,
                 );
               }
@@ -196,7 +198,7 @@ export function MessageList({
                   <SubtaskCard
                     key={"task-group-" + taskId}
                     taskId={taskId!}
-                    isLoading={thread.isLoading}
+                    isLoading={isGroupLoading}
                   />,
                 );
               }
@@ -209,7 +211,7 @@ export function MessageList({
                 {results}
                 <MessageTokenUsageList
                   enabled={tokenUsageEnabled}
-                  isLoading={thread.isLoading}
+                  isLoading={isGroupLoading}
                   messages={group.messages}
                 />
               </div>
@@ -224,11 +226,11 @@ export function MessageList({
             <div key={"group-" + group.id} className="w-full">
               <MessageGroup
                 messages={group.messages}
-                isLoading={thread.isLoading}
+                isLoading={isGroupLoading}
               />
               <MessageTokenUsageList
                 enabled={tokenUsageEnabled}
-                isLoading={thread.isLoading}
+                isLoading={isGroupLoading}
                 messages={tokenUsageMessages}
               />
             </div>

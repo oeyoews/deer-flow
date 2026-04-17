@@ -76,6 +76,29 @@ def test_create_chat_result_strips_inline_think_tags():
     assert result.generations[0].text == "真正回答。"
 
 
+def test_create_chat_result_strips_unclosed_inline_think_tags():
+    model = _make_model()
+    response = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "真正回答。\n<think>\n这是思考过程但没有闭合标签",
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "model": "MiniMax-M2.5",
+    }
+
+    result = model._create_chat_result(response)
+    message = result.generations[0].message
+
+    assert message.content == "真正回答。"
+    assert message.additional_kwargs["reasoning_content"] == "这是思考过程但没有闭合标签"
+    assert result.generations[0].text == "真正回答。"
+
+
 def test_convert_chunk_to_generation_chunk_preserves_reasoning_deltas():
     model = _make_model()
     first = model._convert_chunk_to_generation_chunk(

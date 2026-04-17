@@ -25,7 +25,7 @@ from langchain_openai.chat_models.base import (
     _create_usage_metadata,
 )
 
-_THINK_TAG_RE = re.compile(r"<think>\s*(.*?)\s*</think>", re.DOTALL)
+_THINK_TAG_RE = re.compile(r"<think>\s*(.*?)(?:\s*</think>|$)", re.DOTALL | re.IGNORECASE)
 
 
 def _extract_reasoning_text(

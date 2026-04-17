@@ -89,7 +89,9 @@ class TitleMiddleware(AgentMiddleware[TitleMiddlewareState]):
 
     def _strip_think_tags(self, text: str) -> str:
         """Remove <think>...</think> blocks emitted by reasoning models (e.g. minimax, DeepSeek-R1)."""
-        return re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE).strip()
+        # Some providers may truncate output and omit the closing </think> tag.
+        # In that case, treat everything after <think> as non-user-visible.
+        return re.sub(r"<think>[\s\S]*?(?:</think>|$)", "", text, flags=re.IGNORECASE).strip()
 
     def _parse_title(self, content: object) -> str:
         """Normalize model output into a clean title string."""

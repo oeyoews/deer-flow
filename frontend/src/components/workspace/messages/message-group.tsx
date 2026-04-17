@@ -12,7 +12,7 @@ import {
   SquareTerminalIcon,
   WrenchIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   ChainOfThought,
@@ -48,13 +48,14 @@ export function MessageGroup({
   messages: Message[];
   isLoading?: boolean;
 }) {
+  const THINKING_AUTO_CLOSE_DELAY = 1000;
   const { t } = useI18n();
   const [showAbove, setShowAbove] = useState(
     env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true",
   );
-  const [showLastThinking, setShowLastThinking] = useState(
-    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true",
-  );
+  const [showLastThinking, setShowLastThinking] = useState(isLoading);
+  const [hasManualExpandLastThinking, setHasManualExpandLastThinking] =
+    useState(false);
   const steps = useMemo(() => convertToSteps(messages), [messages]);
   const lastToolCallStep = useMemo(() => {
     const filteredSteps = steps.filter((step) => step.type === "toolCall");
@@ -77,6 +78,26 @@ export function MessageGroup({
     }
   }, [lastToolCallStep, steps]);
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    if (isLoading) {
+      setShowLastThinking(true);
+      setHasManualExpandLastThinking(false);
+    } else if (showLastThinking && !hasManualExpandLastThinking) {
+      timer = setTimeout(() => {
+        setShowLastThinking(false);
+      }, THINKING_AUTO_CLOSE_DELAY);
+    }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [isLoading, showLastThinking, hasManualExpandLastThinking]);
+
   return (
     <ChainOfThought
       className={cn("w-full gap-2 rounded-lg border p-0.5", className)}
@@ -145,7 +166,13 @@ export function MessageGroup({
             key={lastReasoningStep.id}
             className="w-full items-start justify-start text-left"
             variant="ghost"
-            onClick={() => setShowLastThinking(!showLastThinking)}
+            onClick={() => {
+              const nextOpen = !showLastThinking;
+              setShowLastThinking(nextOpen);
+              if (nextOpen) {
+                setHasManualExpandLastThinking(true);
+              }
+            }}
           >
             <div className="flex w-full items-center justify-between">
               <ChainOfThoughtStep
